@@ -1,0 +1,1 @@
+sudo docker run --gpus all -v ~/cache:/root/.cache/ --rm --name api -d -it -p 8095:5000 stakapi
