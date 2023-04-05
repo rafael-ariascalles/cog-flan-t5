@@ -4,7 +4,7 @@ from cog import BasePredictor, Input
 import torch
 from peft import PeftModel, PeftConfig
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-
+import os
 
 CACHE_DIR = 'weights'
 SEP = "<sep>"
@@ -12,18 +12,31 @@ SEP = "<sep>"
 class Predictor(BasePredictor):
     def setup(self):
 
-        HfFolder().save_token(token="")
-
+        HfFolder().save_token(token=os.getenv("HUGGINGFACE_TOKEN"))
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         
         peft_model_id = "rjac/flan-t5-xxl-senza-LoRA-qa"
         config = PeftConfig.from_pretrained(peft_model_id)
-        model = AutoModelForSeq2SeqLM.from_pretrained(config.base_model_name_or_path,torch_dtype=torch.float16, load_in_8bit=True,  device_map={'':0})
-        self.tokenizer = AutoTokenizer.from_pretrained(config.base_model_name_or_path,device_map={'':0})
+
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+            config.base_model_name_or_path,
+            torch_dtype=torch.float16,
+            load_in_8bit=True,
+            device_map={'':0},
+            cache_dir=CACHE_DIR,
+            local_files_only=True,
+        )
+        
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            config.base_model_name_or_path,
+            device_map={'':0},
+            cache_dir=CACHE_DIR,
+            local_files_only=True,
+        )
+
         self.model = PeftModel.from_pretrained(model, peft_model_id,device_map={'':0})
         #print(torch.__version__)
         
-
     def predict(
         self,
         prompt: str = Input(description=f"Prompt to send to FLAN-T5."),
